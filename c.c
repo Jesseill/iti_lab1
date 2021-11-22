@@ -3,19 +3,19 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <fcntl.h>
-
 #include <netinet/tcp.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
 #include <netdb.h>
-#define BUFFER_SIZE 10000
+
+#define MAX_BUFFER 10000
 #define PORT 80
 
 int socket_connect(const char *url, in_port_t port){
-	struct hostent *hp;
+	struct hostent *hostt;
 	struct sockaddr_in addr;
-	int on = 1, sock;     
+	int sock;     
 	
 	sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	//printf("%d\n", sock);
@@ -25,32 +25,20 @@ int socket_connect(const char *url, in_port_t port){
 
 	}
 
-	if((hp = gethostbyname(url)) == NULL){
-		herror("gethostbyname");
+	if((hostt = gethostbyname(url)) == NULL){
+		herror("gethostbyname faild");
 		exit(1);
 	}
-	bcopy(hp->h_addr, &addr.sin_addr, hp->h_length);
+	bcopy(hostt->h_addr, &addr.sin_addr, hostt->h_length);
 	addr.sin_port = htons(port);
 	addr.sin_family = AF_INET;
-	//printf("host\n");
 
-	//setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (const char *)&on, sizeof(int));
-	
 	// if(inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr )<0){
 	// 	printf("invalid addr");
 	// 	exit(1);
 	// }
 
 	//printf("create socket\n");
-	
-
-	// setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, (const char *)&on, sizeof(int));
-	
-	// if(sock == -1){
-	// 	perror("set sockopt fail");
-	// 	exit(1);
-	// }
-	// 	printf("set sockopt");
 	
 
 	
@@ -66,14 +54,14 @@ int socket_connect(const char *url, in_port_t port){
 
 typedef struct pp{
 	int cnt;
-	char href[100][BUFFER_SIZE];
+	char href[100][MAX_BUFFER];
 }P;
 
-P gethref(int obj, char html[100][BUFFER_SIZE] ){
+P gethref(int obj, char html[100][MAX_BUFFER] ){
 	//char ** html = (char**)buff;
 	P p;
 	p.cnt = 0;
-	memset(p.href, 0, sizeof(p.href[0][0])*100*BUFFER_SIZE);
+	memset(p.href, 0, sizeof(p.href[0][0])*100*MAX_BUFFER);
 	char para[] = {"<a href=\"\""};
 	int cmp=0;
 	int recording = 0;
@@ -122,20 +110,20 @@ P gethref(int obj, char html[100][BUFFER_SIZE] ){
 
 int main(int argc, char *argv[]){
 	int fd;
-	char buffer[100][BUFFER_SIZE];
-	char url[BUFFER_SIZE];
-	char dmn[BUFFER_SIZE];
-	char path[BUFFER_SIZE];
+	char buffer[100][MAX_BUFFER];
+	char url[MAX_BUFFER];
+	char dmn[MAX_BUFFER];
+	char path[MAX_BUFFER];
 	int recv_size;
 	//strcpy(dmn, argv[1]);
 	scanf("%s", dmn);
 	//printf("%s\n", dmn);
 	char *split = strchr(dmn, '/');
-	memset(buffer, 0, sizeof(buffer[0][0])*100*BUFFER_SIZE);
-	bzero(path, BUFFER_SIZE);
+	memset(buffer, 0, sizeof(buffer[0][0])*100*MAX_BUFFER);
+	bzero(path, MAX_BUFFER);
 	strcat(path, split);
-	*split++ = '\0';
-	char msg[BUFFER_SIZE];
+	*split = '\0';
+	char msg[MAX_BUFFER];
 	char cnt[] = "HTTP/1.0\r\n\r\n";
 	//printf("hi\n");
 	//printf("%s %s\n", dmn, path);
@@ -144,14 +132,8 @@ int main(int argc, char *argv[]){
 	//printf("fd\n");
 	// strcat(msg, url);
 	// strcat(msg, cnt);
-	snprintf(msg, sizeof(msg), "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n", path, dmn);
-	// write(fd, "GET /\r\n", strlen("GET /\r\n")); // write(fd, char[]*, len);  
-	bzero(buffer, BUFFER_SIZE);
+	snprintf(msg, sizeof(msg), "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n", path, dmn); 
 	
-	// while(read(fd, buffer, BUFFER_SIZE - 1) != 0){
-	// 	fprintf(stderr, "%s", buffer);
-	// 	bzero(buffer, BUFFER_SIZE);
-	// }
 	//printf("send msg: %s\n", msg);
 
 	if (send(fd, msg, strlen(msg), 0) == -1){
@@ -161,7 +143,7 @@ int main(int argc, char *argv[]){
 	//printf("succesful send request");
 	int i = 0;
 
-	while(recv_size = recv(fd,buffer[i], BUFFER_SIZE, 0)){
+	while(recv_size = recv(fd,buffer[i], MAX_BUFFER, 0)){
 		if(recv_size<0){
 			perror("fail recv response");
 			break;
