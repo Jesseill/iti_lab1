@@ -12,14 +12,15 @@
 #define MAX_BUFFER 10000
 #define PORT 80
 
-int socket_connect(const char *url, in_port_t port){
-	struct hostent *hostt;
+int socketfd;
+void socket_to_host(const char *url, in_port_t port){
 	struct sockaddr_in addr;
-	int sock;     
+	struct hostent *hostt;
+	int sockfd;     
 	
-	sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	//printf("%d\n", sock);
-	if (sock<0){
+	sockfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	//printf("%d\n", sockfd);
+	if (sockfd<0){
 		printf("socket create faild");
 		exit(1);
 
@@ -29,7 +30,9 @@ int socket_connect(const char *url, in_port_t port){
 		herror("gethostbyname faild");
 		exit(1);
 	}
-	bcopy(hostt->h_addr, &addr.sin_addr, hostt->h_length);
+
+	memcpy( &addr.sin_addr, hostt->h_addr, hostt->h_length);
+
 	addr.sin_port = htons(port);
 	addr.sin_family = AF_INET;
 
@@ -42,14 +45,16 @@ int socket_connect(const char *url, in_port_t port){
 	
 
 	
-	if(connect(sock, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0){
+	if(connect(sockfd, (struct sockaddr *)&addr, sizeof(struct sockaddr_in)) < 0){
 		perror("connection fail");
 		exit(1);
 
 	}
 	//printf("done connect\n");
 	
-	return sock;
+	socketfd = sockfd;
+
+	return;
 }
 
 typedef struct pp{
@@ -109,7 +114,6 @@ P gethref(int obj, char html[100][MAX_BUFFER] ){
 
 
 int main(int argc, char *argv[]){
-	int fd;
 	char buffer[100][MAX_BUFFER];
 	char url[MAX_BUFFER];
 	char dmn[MAX_BUFFER];
@@ -119,8 +123,11 @@ int main(int argc, char *argv[]){
 	scanf("%s", dmn);
 	//printf("%s\n", dmn);
 	char *split = strchr(dmn, '/');
+
+	// recieve 100 times at most
 	memset(buffer, 0, sizeof(buffer[0][0])*100*MAX_BUFFER);
 	bzero(path, MAX_BUFFER);
+
 	strcat(path, split);
 	*split = '\0';
 	char msg[MAX_BUFFER];
@@ -128,22 +135,26 @@ int main(int argc, char *argv[]){
 	//printf("hi\n");
 	//printf("%s %s\n", dmn, path);
 	
-	fd = socket_connect(dmn, PORT); 
-	//printf("fd\n");
+
+	//create socket and connect to server
+	socket_to_host(dmn, PORT); 
+
+	
+	//printf("socketfd\n");
 	// strcat(msg, url);
 	// strcat(msg, cnt);
 	snprintf(msg, sizeof(msg), "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n", path, dmn); 
 	
 	//printf("send msg: %s\n", msg);
 
-	if (send(fd, msg, strlen(msg), 0) == -1){
+	if (send(socketfd, msg, strlen(msg), 0) == -1){
 		perror("fail send rqst");
 		exit(1);
 	}
 	//printf("succesful send request");
 	int i = 0;
 
-	while(recv_size = recv(fd,buffer[i], MAX_BUFFER, 0)){
+	while(recv_size = recv(socketfd,buffer[i], MAX_BUFFER, 0)){
 		if(recv_size<0){
 			perror("fail recv response");
 			break;
@@ -167,8 +178,8 @@ int main(int argc, char *argv[]){
 	}
 
 
-	shutdown(fd, SHUT_RDWR); 
-	close(fd); 
+	shutdown(socketfd, SHUT_RDWR); 
+	close(socketfd); 
 
 	return 0;
 }
